@@ -20,6 +20,7 @@
 
 #include "elempool.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -32,14 +33,16 @@ static struct elem *memoire_elem_pool = 0;
 
 /**
    Fonction allouant un element
-   ./ensitestgc --all
+
+   @return NULL if overflow or a pointer to next free pool element
 */
 struct elem *alloc_elem(void) {
-    static size_t i = 0;
+    /* Récupération de l'indice à partir duquel memoire_elem_pool[i] est false*/
+    size_t i = 0;
     while (i < n && bt1k_get(i)) {
         i++;
     }
-    /* Problème s i plus de 1000 appels à alloc_elem */
+    /* Cas limite: overflow de memoire_elem_pool*/
     if (i == n) {
         return NULL;
     }
@@ -48,11 +51,37 @@ struct elem *alloc_elem(void) {
 }
 
 /**
-   Fonction ramasse-miette sur les elements qui ne sont pas
-   atteignables depuis les têtes de listes
+ * Fonction ramasse-miette sur les elements qui ne sont pas
+ * atteignables depuis les têtes de listes.
+ * 
+ * But: trouver les portions du bloc qui sont et ne sont pas utilisées.
+ * Mise à true tous les booléens correspondant à un élément utilisé et 
+ * mettre à false les autres.
+ * 
+ * @param heads n tableau contenant les adresses de 0, une ou plusieurs têtes de liste
+ * @param nbheads nombre de têtes de liste
 */
 void gc_elems(struct elem **heads, int nbheads) {
-    /* ajouter votre code ici / add your code here */
+    /* 
+        Tout élément qui n’est pas chaîné dans une des listes passées en paramètre,
+        au moment de l’appel de gc_elems(), est donc libre.
+    */
+    bt1k_reset();
+
+    for (int i = 0; i < nbheads; ++i) {
+        struct elem *head = heads[i];
+        /* Parcours de la liste chaînée et marquage des éléments présents à true */
+        while (head) {
+            struct elem *base = (struct elem *)memoire_elem_pool;
+            
+            assert(head - base >= 0);
+            long unsigned int idx = (long unsigned int)(head - base);
+            
+            bt1k_set(idx, true);
+            /* On passe à l'élément suivant de la liste chaînée */
+            head = head->next;
+        }
+    }
 }
 
 /**

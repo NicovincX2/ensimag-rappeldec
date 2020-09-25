@@ -11,6 +11,7 @@ const unsigned long m = (1UL << 48);
 unsigned char crand48(void) {
     /* See https://nccbulletin.ru/files/article/kalgin_0.pdf */
     X = (X * a + c) & (m - 1);
+    // return (unsigned char)( X >> 32);
     return (X >> (8 * 4)) & 0xff;
 }
 
